@@ -1,5 +1,11 @@
 #pragma once
 
+#include <thrust/version.h>
+
+#if THRUST_VERSION < 100600
+#error "Requires Thrust 1.6 or better."
+#endif
+
 #include <thrust/memory.h>
 #include <thrust/system/cuda/memory.h>
 
@@ -127,11 +133,10 @@ template<typename Element>
     operator value_type () const
     {
     #if __CUDA_ARCH__ >= 350
-      // use streaming load
-      return __ldg(thrust::raw_pointer_cast(&(*this)));
+      return get_value_sm3X(thrust::raw_pointer_cast(&*this));
     #else
       // defer to super_t otherwise
-      return super_t::operator Element ();
+      return super_t::operator value_type ();
     #endif
     };
 
@@ -143,5 +148,33 @@ template<typename Element>
 
     inline __host__ __device__
     immutable_reference &operator=(const value_type &x);
+
+    template<typename T>
+    inline __device__
+    typename thrust::detail::enable_if<
+      thrust::detail::is_numeric<T>::value,
+      value_type
+    >::type
+    get_value_sm3X(const T *raw_pointer) const
+    {
+      return __ldg(raw_pointer);
+    }
+
+    template<typename T>
+    inline __device__
+    typename thrust::detail::disable_if<
+      thrust::detail::is_numeric<T>::value,
+      value_type
+    >::type
+    get_value_sm3X(const T *raw_pointer) const
+    {
+      // hope that the compiler will figure it out
+      // XXX i doubt this enough to issue __ldg
+      //     instead we should tease apart T into chunks
+      //     which could fit into registers and __ldg
+      //     each chunk
+      const T __restrict__ *cr_ptr = raw_pointer;
+      return *cr_ptr;
+    }
 };
 
