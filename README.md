@@ -1,0 +1,1 @@
+A pointer to an immutable value or range of values for faster loads.
