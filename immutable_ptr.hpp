@@ -142,12 +142,9 @@ template<typename Element>
 
   private:
     // can't assign to an immutable_reference
-    template<typename OtherT>
+    template<typename T>
     inline __host__ __device__
-    immutable_reference &operator=(const immutable_reference<OtherT> &other);
-
-    inline __host__ __device__
-    immutable_reference &operator=(const value_type &x);
+    immutable_reference &operator=(const T &);
 
     template<typename T>
     inline __device__
